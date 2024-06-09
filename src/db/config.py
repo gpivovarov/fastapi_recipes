@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class DatabaseConfig(BaseSettings):
+class ProjectConfig(BaseSettings):
     POSTGRES_DB: str
     POSTGRES_HOST: str
     POSTGRES_PORT: int
@@ -17,4 +17,4 @@ class DatabaseConfig(BaseSettings):
     # model_config = SettingsConfigDict(env_file='.env')
 
 
-config = DatabaseConfig()
+config = ProjectConfig()

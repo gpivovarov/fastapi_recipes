@@ -1,4 +1,4 @@
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -28,3 +28,14 @@ class BaseService:
             return res.scalar_one()
         return res
 
+    async def get_one(self, model: Type[BaseModel], filter: dict):
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
+        res = False
+        stmt = select(model).filter_by(**filter)
+        async with async_session() as session:
+            row = await session.execute(stmt)
+            try:
+                res = row.scalar_one()
+            except Exception:
+                return False
+        return res
