@@ -39,3 +39,15 @@ class BaseService:
             except Exception:
                 return False
         return res
+
+    async def get_list(self, model: Type[BaseModel]):
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
+        res = []
+        stmt = select(model)
+        async with async_session() as session:
+            row = await session.execute(stmt)
+            try:
+                res = row.scalars()
+            except Exception:
+                return []
+        return res
