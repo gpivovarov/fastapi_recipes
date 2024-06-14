@@ -2,6 +2,7 @@ import uvicorn
 from fastapi import FastAPI, APIRouter
 from src.users.router import router as user_router
 from src.recipes.router import router as recipe_router
+from src.db.models import *
 
 app = FastAPI()
 router = APIRouter()

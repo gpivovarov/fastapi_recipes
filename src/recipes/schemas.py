@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from src.users.schemas import User
+from src.recipes.categories.schemas import RecipeCategory
 
 
 class RecipeCreateRequest(BaseModel):
@@ -15,4 +16,4 @@ class RecipeCreateResponse(BaseModel):
 
 class RecipeResponse(RecipeCreateRequest, RecipeCreateResponse):
     author: User
-    pass
+    categories: list[RecipeCategory]
