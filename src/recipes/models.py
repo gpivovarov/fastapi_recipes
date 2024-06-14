@@ -17,3 +17,8 @@ class Recipe(Base):
         secondary='recipes_categories_values',
         lazy='selectin'
     )
+    ingredients: Mapped[list['RecipeIngredient']] = relationship(
+        back_populates='recipes',
+        secondary='recipes_ingredients_values',
+        lazy='selectin'
+    )
