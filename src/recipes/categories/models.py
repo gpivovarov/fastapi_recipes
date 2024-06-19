@@ -1,4 +1,3 @@
-from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.models import Base
 

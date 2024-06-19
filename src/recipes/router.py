@@ -22,3 +22,9 @@ router.add_api_route(
     methods={'get'},
     response_model=RecipeResponse
 )
+router.add_api_route(
+    '/{recipe_id}',
+    recipes_service.update_recipe,
+    methods={'patch'},
+    response_model=RecipeResponse
+)
