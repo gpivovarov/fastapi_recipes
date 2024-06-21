@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from typing import Optional
 from src.db.engine import engine
 from src.core.service import BaseService
 from src.recipes.models import Recipe
@@ -39,7 +40,24 @@ class RecipesService(BaseService):
         raise HTTPException(status_code=500, detail='Unknown error on recipe service')
 
     async def list(self):
-        res = await self.get_list(model=Recipe)
+        res = await self.get_list()
+        return res
+
+    async def get_list(self, filters: dict | None = None):
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
+        res = []
+        stmt = select(Recipe)
+        if filters:
+            if filters['categories']:
+                stmt = stmt.filter(Recipe.categories.any(RecipeCategoryValue.category_id.in_(filters['categories'])))
+            if filters['cooking_time']:
+                stmt = stmt.filter(Recipe.cooking_time == filters['cooking_time'])
+        async with async_session() as session:
+            row = await session.execute(stmt)
+            try:
+                res = row.scalars()
+            except Exception:
+                return []
         return res
 
     async def get_by_id(self, recipe_id: int):
@@ -118,6 +136,13 @@ class RecipesService(BaseService):
         if new_values:
             return await self.update(model=Recipe, pk=recipe_id, values=new_values)
         raise HTTPException(status_code=500, detail='Server error')
+
+    async def filter(self, time: int | None = None, categories: Optional[list] = None):
+        res = await self.get_list(filters={
+            'cooking_time': time,
+            'categories': categories
+        })
+        return res
 
 
 recipes_service = RecipesService()

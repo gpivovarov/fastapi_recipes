@@ -17,6 +17,12 @@ router.add_api_route(
     response_model=list[RecipeResponse]
 )
 router.add_api_route(
+    '/list/filter',
+    recipes_service.filter,
+    methods={'get'},
+    response_model=list[RecipeResponse]
+)
+router.add_api_route(
     '/{recipe_id}',
     recipes_service.get_by_id,
     methods={'get'},
