@@ -63,7 +63,7 @@ class BaseService:
         async with async_session() as session:
             row = await session.execute(stmt)
             try:
-                res = row.scalars()
+                res = row.scalars().all()
             except Exception:
                 return []
         return res
