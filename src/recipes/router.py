@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.recipes.service import recipes_service
-from src.recipes.schemas import RecipeCreateResponse, RecipeResponse
+from src.recipes.schemas import RecipeCreateResponse, RecipeResponse, RecipeDeleteResponse
 
 router = APIRouter()
 
@@ -33,4 +33,10 @@ router.add_api_route(
     recipes_service.update_recipe,
     methods={'patch'},
     response_model=RecipeResponse
+)
+router.add_api_route(
+    '/{recipe_id}',
+    recipes_service.delete_recipe,
+    methods={'delete'},
+    response_model=RecipeDeleteResponse
 )

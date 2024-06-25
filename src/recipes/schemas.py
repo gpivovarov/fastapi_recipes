@@ -28,3 +28,7 @@ class RecipeUpdateRequest(BaseModel):
     cooking_time: int | None = None
     categories: list[int] | None = None
     ingredients: list[int] | None = None
+
+
+class RecipeDeleteResponse(BaseModel):
+    success: bool

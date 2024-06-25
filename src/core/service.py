@@ -68,3 +68,18 @@ class BaseService:
                 return []
         return res
 
+    async def delete(self, model: Type[BaseModel], pk: int):
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
+        stmt = delete(model).where(model.id == pk)
+        result = False
+        async with async_session() as session:
+            try:
+                await session.execute(stmt)
+                result = True
+            except Exception:
+                await session.rollback()
+            else:
+                await session.commit()
+        await engine.dispose()
+        return result
+

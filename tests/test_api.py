@@ -126,3 +126,25 @@ async def test_update_recipe(ac: AsyncClient):
     data = response.json()
     assert data['title'] == f'Recipe {recipe_id} updated'
     assert data['cooking_time'] == 100
+
+
+async def test_get_recipe(ac: AsyncClient):
+    global recipe_id
+    response = await ac.get(f'/recipes/{recipe_id}')
+    assert response.status_code == 200
+    data = response.json()
+    assert 'id' in data
+    assert data['id'] == recipe_id
+    assert 'title' in data
+    assert 'description' in data
+
+
+async def test_delete_recipe(ac: AsyncClient):
+    global access_token, recipe_id
+    response = await ac.delete(
+        f'/recipes/{recipe_id}',
+        headers={
+            'Authorization': f'Bearer {access_token}'
+        }
+    )
+    assert response.status_code == 200

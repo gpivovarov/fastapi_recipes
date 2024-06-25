@@ -144,5 +144,21 @@ class RecipesService(BaseService):
         })
         return res
 
+    async def delete_recipe(self, recipe_id: int, token: str = Depends(oauth2_scheme)):
+        user = await user_service.get_current(token=token)
+        if not user:
+            raise HTTPException(status_code=401, detail='Unauthorized')
+
+        row = await self.get_by_id(recipe_id=recipe_id)
+        if not row:
+            raise HTTPException(status_code=404, detail='Recipe not found')
+
+        if user.id != row.author_id:
+            raise HTTPException(status_code=403, detail='Access denied')
+
+        res = await self.delete(model=Recipe, pk=recipe_id)
+
+        return {'success': res}
+
 
 recipes_service = RecipesService()
