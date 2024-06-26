@@ -1,5 +1,6 @@
+import re
 from fastapi import Depends, HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from typing import Optional
 from src.db.engine import engine
@@ -7,22 +8,41 @@ from src.core.service import BaseService
 from src.recipes.models import Recipe
 from src.recipes.schemas import RecipeCreateRequest, RecipeUpdateRequest
 from src.users.service import user_service, oauth2_scheme
+from src.recipes.categories.models import RecipeCategory
+from src.recipes.ingredients.models import RecipeIngredient
 from src.recipes.categories.values.models import RecipeCategoryValue
 from src.recipes.ingredients.values.models import RecipeIngredientValue
 
 
+HTML_CLEANER_REGEX = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6}|\\t);')
+
+
 class RecipesService(BaseService):
+
     async def add_recipe(self, data: RecipeCreateRequest, token: str = Depends(oauth2_scheme)):
         user = await user_service.get_current(token=token)
         if not user:
             raise HTTPException(status_code=500, detail='Unknown error on recipe service')
         values = data.model_dump()
-        categories = values['categories']
-        ingredients = values['ingredients']
 
         values.update({'author_id': user.id})
+
+        categories = values['categories']
+        ingredients = values['ingredients']
         del values['categories']
         del values['ingredients']
+
+        searchable_text = values['title'].lower() + ' ' + re.sub(HTML_CLEANER_REGEX, '', values['description'].lower())
+        if categories:
+            categories_rows = await super().get_list(model=RecipeCategory)
+            if categories_rows:
+                searchable_text += ' '.join(row.name.lower() for row in categories_rows if row.id in categories)
+        if ingredients:
+            ingredients_rows = await super().get_list(model=RecipeIngredient)
+            if ingredients_rows:
+                searchable_text += ' '.join(row.name.lower() for row in ingredients_rows if row.id in ingredients)
+
+        values.update({'searchable_content': searchable_text})
 
         result = await self.create(model=Recipe, values=values)
         if result:
@@ -52,13 +72,22 @@ class RecipesService(BaseService):
                 stmt = stmt.filter(Recipe.categories.any(RecipeCategoryValue.category_id.in_(filters['categories'])))
             if filters['cooking_time']:
                 stmt = stmt.filter(Recipe.cooking_time == filters['cooking_time'])
+            if filters['query']:
+                stmt = stmt.filter(func.to_tsvector('russian', Recipe.searchable_content).bool_op('@@')(
+                    func.to_tsquery('russian', filters['query'].lower())
+                ))
         async with async_session() as session:
             row = await session.execute(stmt)
+            items = []
             try:
                 res = row.scalars()
+                if res:
+                    for row in res:
+                        row.description = f'{row.description[:25]}...'
+                        items.append(row)
             except Exception:
-                return []
-        return res
+                return items
+        return items
 
     async def get_by_id(self, recipe_id: int):
         recipe = await self.get_one(model=Recipe, filter={'id': recipe_id})
@@ -137,10 +166,11 @@ class RecipesService(BaseService):
             return await self.update(model=Recipe, pk=recipe_id, values=new_values)
         raise HTTPException(status_code=500, detail='Server error')
 
-    async def filter(self, time: int | None = None, categories: Optional[list] = None):
+    async def filter(self, time: int | None = None, categories: Optional[list] = None, q: str | None = None):
         res = await self.get_list(filters={
             'cooking_time': time,
-            'categories': categories
+            'categories': categories,
+            'query': q
         })
         return res
 

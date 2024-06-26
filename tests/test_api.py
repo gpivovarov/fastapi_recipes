@@ -13,6 +13,7 @@ client = TestClient(app)
 user_data = seeder.AUTHOR_DATA
 access_token = None
 recipe_id = None
+#logger = Logger()
 
 
 @pytest.fixture(scope='session')

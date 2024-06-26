@@ -4,12 +4,16 @@ from src.recipes.service import recipes_service
 from src.recipes.categories.models import RecipeCategory
 from src.recipes.ingredients.models import RecipeIngredient
 from src.recipes.models import Recipe
+from src.logger import Logger
+
+logger = Logger()
 
 
 class Seeder:
     AUTHOR_DATA = {
         'password': 'abc123dfeKK',
         'email': f'seed{str(int(time.time()))}@seeddb.seed'
+        # 'email': 'seed1719383287@seeddb.seed'
     }
 
     RECIPE_TITLES = [
@@ -49,7 +53,10 @@ class Seeder:
     async def get_categories_ids(self):
         service = BaseService()
         rows = await service.get_list(model=RecipeCategory)
-        not_existing_cats = [row.name for row in rows if row.name not in self.RECIPE_CATEGORIES]
+        if not rows:
+            not_existing_cats = self.RECIPE_CATEGORIES
+        else:
+            not_existing_cats = [row.name for row in rows if row.name not in self.RECIPE_CATEGORIES]
         if not_existing_cats:
             for cat_name in not_existing_cats:
                 await service.create(model=RecipeCategory, values={
@@ -61,7 +68,10 @@ class Seeder:
     async def get_ingredients_ids(self):
         service = BaseService()
         rows = await service.get_list(model=RecipeIngredient)
-        not_existing_ingredients = [row.name for row in rows if row.name not in self.RECIPE_INGREDIENTS]
+        if not rows:
+            not_existing_ingredients = self.RECIPE_INGREDIENTS
+        else:
+            not_existing_ingredients = [row.name for row in rows if row.name not in self.RECIPE_INGREDIENTS]
         if not_existing_ingredients:
             for ingredient_name in not_existing_ingredients:
                 await service.create(model=RecipeIngredient, values={

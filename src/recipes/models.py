@@ -22,3 +22,4 @@ class Recipe(Base):
         secondary='recipes_ingredients_values',
         lazy='selectin'
     )
+    searchable_content: Mapped[str] = mapped_column(nullable=False)
