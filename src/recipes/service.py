@@ -1,6 +1,6 @@
 import re
 from fastapi import Depends, HTTPException
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, select, func, alias
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from typing import Optional
 from src.db.engine import engine
@@ -59,35 +59,54 @@ class RecipesService(BaseService):
             return result
         raise HTTPException(status_code=500, detail='Unknown error on recipe service')
 
-    async def list(self):
-        res = await self.get_list()
+    async def list(self, page: int = 1, page_size: int = 10):
+        res = await self.get_list(
+            limit=page_size,
+            offset=(page - 1) * page_size
+        )
         return res
 
-    async def get_list(self, filters: dict | None = None):
+    async def get_list(self, filters: dict | None = None, limit: int = 10, offset: int = 0):
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         res = []
+        total_rows = 0
+        subquery = select(func.count()).order_by(None).select_from(Recipe)
         stmt = select(Recipe)
         if filters:
             if filters['categories']:
                 stmt = stmt.filter(Recipe.categories.any(RecipeCategoryValue.category_id.in_(filters['categories'])))
+                subquery = subquery.filter(Recipe.categories.any(RecipeCategoryValue.category_id.in_(filters['categories'])))
             if filters['cooking_time']:
                 stmt = stmt.filter(Recipe.cooking_time == filters['cooking_time'])
+                subquery = subquery.filter(Recipe.cooking_time == filters['cooking_time'])
             if filters['query']:
                 stmt = stmt.filter(func.to_tsvector('russian', Recipe.searchable_content).bool_op('@@')(
                     func.to_tsquery('russian', filters['query'].lower())
                 ))
+                subquery = subquery.filter(func.to_tsvector('russian', Recipe.searchable_content).bool_op('@@')(
+                    func.to_tsquery('russian', filters['query'].lower())
+                ))
+        stmt = stmt.limit(limit).offset(offset)
+
         async with async_session() as session:
-            row = await session.execute(stmt)
+            # TODO: make a subquery
+            rs_total = await session.execute(subquery)
+            total_rows = rs_total.scalar()
+
+            rs = await session.execute(stmt)
             items = []
             try:
-                res = row.scalars()
+                res = rs.scalars()
                 if res:
                     for row in res:
                         row.description = f'{row.description[:25]}...'
                         items.append(row)
             except Exception:
-                return items
-        return items
+                pass
+        return {
+            'items': items,
+            'total': total_rows
+        }
 
     async def get_by_id(self, recipe_id: int):
         recipe = await self.get_one(model=Recipe, filter={'id': recipe_id})
@@ -166,12 +185,15 @@ class RecipesService(BaseService):
             return await self.update(model=Recipe, pk=recipe_id, values=new_values)
         raise HTTPException(status_code=500, detail='Server error')
 
-    async def filter(self, time: int | None = None, categories: Optional[list] = None, q: str | None = None):
+    async def filter(self, time: int | None = None, categories: Optional[list] = None, q: str | None = None, page: int = 1, page_size: int = 10):
         res = await self.get_list(filters={
             'cooking_time': time,
             'categories': categories,
             'query': q
-        })
+            },
+            limit=page_size,
+            offset=(page - 1) * page_size
+        )
         return res
 
     async def delete_recipe(self, recipe_id: int, token: str = Depends(oauth2_scheme)):

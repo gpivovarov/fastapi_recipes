@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.recipes.service import recipes_service
-from src.recipes.schemas import RecipeCreateResponse, RecipeResponse, RecipeDeleteResponse
+from src.recipes.schemas import RecipeCreateResponse, RecipeResponse, RecipeDeleteResponse, RecipeListResponse
 
 router = APIRouter()
 
@@ -14,13 +14,13 @@ router.add_api_route(
     '/list',
     recipes_service.list,
     methods={'get'},
-    response_model=list[RecipeResponse]
+    response_model=RecipeListResponse
 )
 router.add_api_route(
     '/list/filter',
     recipes_service.filter,
     methods={'get'},
-    response_model=list[RecipeResponse]
+    response_model=RecipeListResponse
 )
 router.add_api_route(
     '/{recipe_id}',

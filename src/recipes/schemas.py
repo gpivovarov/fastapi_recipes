@@ -22,6 +22,11 @@ class RecipeResponse(RecipeCreateRequest, RecipeCreateResponse):
     ingredients: list[RecipeIngredient]
 
 
+class RecipeListResponse(BaseModel):
+    items: list[RecipeResponse]
+    total: int
+
+
 class RecipeUpdateRequest(BaseModel):
     title: str | None = None
     description: str | None = None
