@@ -69,43 +69,36 @@ class RecipesService(BaseService):
     async def get_list(self, filters: dict | None = None, limit: int = 10, offset: int = 0):
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         res = []
-        total_rows = 0
-        subquery = select(func.count()).order_by(None).select_from(Recipe)
-        stmt = select(Recipe)
+        total_count = 0
+        stmt = select(Recipe, func.count(Recipe.id).over().label('total_count'))
         if filters:
             if filters['categories']:
                 stmt = stmt.filter(Recipe.categories.any(RecipeCategoryValue.category_id.in_(filters['categories'])))
-                subquery = subquery.filter(Recipe.categories.any(RecipeCategoryValue.category_id.in_(filters['categories'])))
             if filters['cooking_time']:
                 stmt = stmt.filter(Recipe.cooking_time == filters['cooking_time'])
-                subquery = subquery.filter(Recipe.cooking_time == filters['cooking_time'])
             if filters['query']:
                 stmt = stmt.filter(func.to_tsvector('russian', Recipe.searchable_content).bool_op('@@')(
                     func.to_tsquery('russian', filters['query'].lower())
                 ))
-                subquery = subquery.filter(func.to_tsvector('russian', Recipe.searchable_content).bool_op('@@')(
-                    func.to_tsquery('russian', filters['query'].lower())
-                ))
+
         stmt = stmt.limit(limit).offset(offset)
 
         async with async_session() as session:
-            # TODO: make a subquery
-            rs_total = await session.execute(subquery)
-            total_rows = rs_total.scalar()
-
             rs = await session.execute(stmt)
             items = []
             try:
-                res = rs.scalars()
+                res = rs.all()
                 if res:
-                    for row in res:
-                        row.description = f'{row.description[:25]}...'
-                        items.append(row)
+                    for recipe, total_count in res:
+                        recipe.description = f'{recipe.description[:25]}...'
+                        items.append(recipe)
             except Exception:
-                pass
+                raise HTTPException(status_code=500, detail='Internal server error')
+        if not items:
+            raise HTTPException(status_code=404, detail='Items not found')
         return {
             'items': items,
-            'total': total_rows
+            'total': total_count
         }
 
     async def get_by_id(self, recipe_id: int):
